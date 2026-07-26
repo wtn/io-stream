@@ -5,6 +5,7 @@
 
 require_relative "generic"
 require_relative "connection_reset_error"
+require_relative "connection_lost_error"
 
 module IO::Stream
 	# A buffered stream implementation that wraps an underlying IO object to provide efficient buffered reading and writing.
@@ -102,6 +103,8 @@ module IO::Stream
 		
 		def syswrite(buffer)
 			return @io.write(buffer)
+		rescue *CONNECTION_LOST_ERRORS => error
+			raise ConnectionLostError, "Connection lost (#{error.class.name})!"
 		end
 		
 		# Reads data from the underlying stream as efficiently as possible.
@@ -127,6 +130,8 @@ module IO::Stream
 			raise ConnectionResetError, "Connection reset by peer!"
 		rescue Errno::EBADF
 			raise ::IOError, "stream closed"
+		rescue *CONNECTION_LOST_ERRORS => error
+			raise ConnectionLostError, "Connection lost (#{error.class.name})!"
 		end
 	end
 end
