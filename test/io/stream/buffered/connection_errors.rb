@@ -4,6 +4,7 @@
 # Copyright, 2026, by William T. Nelson.
 
 require "io/stream/buffered"
+require "openssl"
 
 # An IO which fails every operation, as these errors cannot be provoked from a real socket.
 class FailingIO
@@ -81,6 +82,31 @@ describe IO::Stream::Buffered do
 		
 		it "is translated into a stream closed error" do
 			expect{stream.read(1)}.to raise_exception(IOError, message: be =~ /closed/)
+		end
+	end
+	
+	with "OpenSSL::SSL::SSLError" do
+		let(:stream) {subject.new(FailingIO.new(OpenSSL::SSL::SSLError.new(message)))}
+		
+		with "an unexpected end of file" do
+			let(:message) {"SSL_read: unexpected eof while reading"}
+			
+			it "is translated into a connection reset error" do
+				expect{stream.read(1)}.to raise_exception(IO::Stream::ConnectionResetError)
+			end
+		end
+		
+		with "any other message" do
+			let(:message) {"SSL_read: sslv3 alert handshake failure"}
+			
+			it "is not swallowed" do
+				expect{stream.read(1)}.to raise_exception(OpenSSL::SSL::SSLError)
+			end
+			
+			# Swallowing the error makes `sysread` return nil, which is indistinguishable from a clean end of file:
+			it "does not report end of file" do
+				expect{stream.read}.to raise_exception(OpenSSL::SSL::SSLError)
+			end
 		end
 	end
 end

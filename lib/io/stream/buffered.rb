@@ -125,6 +125,8 @@ module IO::Stream
 		rescue OpenSSL::SSL::SSLError => error
 			if error.message =~ /unexpected eof while reading/
 				raise ConnectionResetError, "Connection reset by peer!"
+			else
+				raise
 			end
 		rescue Errno::ECONNRESET
 			raise ConnectionResetError, "Connection reset by peer!"
